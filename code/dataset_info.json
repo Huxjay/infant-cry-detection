@@ -1,0 +1,13 @@
+{
+  "total_samples": 4400,
+  "train_samples": 3520,
+  "test_samples": 880,
+  "input_shape": [
+    40,
+    216,
+    1
+  ],
+  "num_classes": 11,
+  "sample_rate": 22050,
+  "duration": 5
+}

@@ -1,0 +1,12 @@
+{
+  "belly_pain": 0,
+  "burping": 1,
+  "cold_hot": 2,
+  "discomfort": 3,
+  "hungry": 4,
+  "lonely": 5,
+  "noise": 6,
+  "resampled": 7,
+  "scared": 8,
+  "tired": 9
+}

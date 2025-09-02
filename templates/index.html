@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Baby Cry Classifier</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      text-align: center;
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 18px;
+      margin: 10px;
+      cursor: pointer;
+    }
+    #status { color: #666; }
+    #result { color: #2c3e50; }
+  </style>
+</head>
+<body>
+  <h1>🎶 Baby Cry Classifier</h1>
+
+  <div>
+    <button id="recordBtn">🎤 Start Recording</button>
+    <button id="stopBtn" disabled>⏹ Stop</button>
+  </div>
+
+  <h2 id="status">Press "Start Recording" to capture audio...</h2>
+  <h3 id="result"></h3>
+
+  <script>
+    let mediaRecorder;
+    let audioChunks = [];
+
+    const recordBtn = document.getElementById("recordBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const statusEl = document.getElementById("status");
+    const resultEl = document.getElementById("result");
+
+    // Start Recording
+    recordBtn.addEventListener("click", async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            sampleRate: 22050,
+            channelCount: 1,
+            echoCancellation: false,
+            noiseSuppression: false
+          }
+        });
+        
+        mediaRecorder = new MediaRecorder(stream, {
+          mimeType: 'audio/webm;codecs=opus'
+        });
+        
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = event => {
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+          const formData = new FormData();
+          formData.append("audio", audioBlob, "recording.webm");
+
+          statusEl.textContent = "⏳ Sending audio for prediction...";
+
+          try {
+            const response = await fetch("http://127.0.0.1:5000/predict", {
+              method: "POST",
+              body: formData
+            });
+
+            const result = await response.json();
+            console.log("Server response:", result);
+
+            if (result.error) {
+              statusEl.textContent = "❌ Error: " + result.error;
+              resultEl.textContent = "";
+            } else {
+              statusEl.textContent = "✅ Prediction complete!";
+              resultEl.textContent = 
+                "Predicted: " + result.predicted_class +
+                " (Confidence: " + (result.confidence * 100).toFixed(2) + "%)";
+            }
+          } catch (err) {
+            console.error("Fetch error:", err);
+            statusEl.textContent = "❌ Failed to send audio: " + err.message;
+          }
+        };
+
+        mediaRecorder.start();
+        recordBtn.disabled = true;
+        stopBtn.disabled = false;
+        statusEl.textContent = "🎙 Recording... (5 seconds recommended)";
+        
+        // Auto-stop after 6 seconds
+        setTimeout(() => {
+          if (mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+            recordBtn.disabled = false;
+            stopBtn.disabled = true;
+          }
+        }, 6000);
+
+      } catch (err) {
+        console.error("Recording error:", err);
+        statusEl.textContent = "❌ Microphone access denied: " + err.message;
+      }
+    });
+
+    // Stop Recording
+    stopBtn.addEventListener("click", () => {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        recordBtn.disabled = false;
+        stopBtn.disabled = true;
+        statusEl.textContent = "🔄 Processing audio...";
+      }
+    });
+  </script>
+</body>
+</html>
