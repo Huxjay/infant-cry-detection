@@ -4,74 +4,272 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Baby Cry Classifier</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 50px auto;
-      padding: 20px;
-      text-align: center;
+      margin: 0;
+      padding: 0;
+      font-family: 'Montserrat', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #74ebd5, #9face6);
+      overflow: hidden;
     }
+
+    .container {
+      position: relative;
+      width: 90%;
+      max-width: 650px;
+      padding: 30px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+      backdrop-filter: blur(14px) saturate(150%);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      text-align: center;
+      color: #fff;
+      animation: fadeIn 1s ease;
+      overflow: hidden;
+    }
+
+    /* Glass highlight overlay */
+    .container::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -50%;
+      width: 200%;
+      height: 100%;
+      background: linear-gradient(120deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 60%);
+      transform: skewY(-10deg);
+      pointer-events: none;
+    }
+
+    h1 {
+      font-weight: 600;
+      font-size: 2rem;
+      margin-bottom: 20px;
+      color: #fff;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
     button {
       padding: 15px 30px;
-      font-size: 18px;
-      margin: 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 50px;
       cursor: pointer;
+      margin: 10px;
+      font-weight: 600;
+      transition: transform 0.2s ease, background 0.3s ease;
+      color: #fff;
     }
-    #status { color: #666; }
-    #result { color: #2c3e50; }
+
+    #recordBtn {
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+    }
+
+    #stopBtn {
+      background: linear-gradient(135deg, #1d976c, #93f9b9);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    button:hover:not(:disabled) {
+      transform: scale(1.05);
+    }
+
+    #status {
+      margin-top: 20px;
+      font-size: 1rem;
+      color: #eaeaea;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+
+    #result {
+      margin-top: 20px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 15px;
+      border-radius: 12px;
+      display: inline-block;
+      min-width: 200px;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.2);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+
+    canvas {
+      width: 100%;
+      height: 120px;
+      margin-top: 20px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.08);
+    }
+
+    /* Water droplets */
+    .drop {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.35);
+      border-radius: 50%;
+      backdrop-filter: blur(4px);
+      animation: drip 6s linear infinite;
+    }
+
+    @keyframes drip {
+      0% { transform: translateY(-20px) scale(1); opacity: 0; }
+      10% { opacity: 1; }
+      100% { transform: translateY(500px) scale(0.8); opacity: 0; }
+    }
+
+    /* Popup Notification */
+    .popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      background: rgba(255,255,255,0.9);
+      padding: 20px 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #222;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .popup.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+      pointer-events: auto;
+      animation: popIn 0.4s ease;
+    }
+
+    @keyframes popIn {
+      from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+      to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
-  <h1>🎶 Baby Cry Classifier</h1>
-
-  <div>
-    <button id="recordBtn">🎤 Start Recording</button>
-    <button id="stopBtn" disabled>⏹ Stop</button>
+  <div class="container">
+    <h1>🎶 Baby Cry Classifier</h1>
+    <div>
+      <button id="recordBtn">🎤 Start Recording</button>
+      <button id="stopBtn" disabled>⏹ Stop</button>
+    </div>
+    <canvas id="waveform"></canvas>
+    <h2 id="status">Press "Start Recording" to capture audio...</h2>
+    <h3 id="result">Waiting for prediction...</h3>
+    
+    <!-- Glass drops -->
+    <div class="drop" style="width:12px; height:12px; left:10%; animation-delay:0s;"></div>
+    <div class="drop" style="width:20px; height:20px; left:30%; animation-delay:1.5s;"></div>
+    <div class="drop" style="width:15px; height:15px; left:60%; animation-delay:3s;"></div>
+    <div class="drop" style="width:10px; height:10px; left:80%; animation-delay:4.5s;"></div>
   </div>
 
-  <h2 id="status">Press "Start Recording" to capture audio...</h2>
-  <h3 id="result"></h3>
+  <!-- Popup element -->
+  <div id="popup" class="popup">Prediction Result</div>
 
   <script>
-    let mediaRecorder;
-    let audioChunks = [];
+    let mediaRecorder, audioChunks = [];
+    let audioContext, analyser, dataArray, source, animationId;
 
     const recordBtn = document.getElementById("recordBtn");
     const stopBtn = document.getElementById("stopBtn");
     const statusEl = document.getElementById("status");
     const resultEl = document.getElementById("result");
+    const canvas = document.getElementById("waveform");
+    const ctx = canvas.getContext("2d");
+    const popup = document.getElementById("popup");
+
+    // Resize canvas properly
+    function resizeCanvas() {
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    function drawWaveform() {
+      animationId = requestAnimationFrame(drawWaveform);
+      analyser.getByteTimeDomainData(dataArray);
+
+      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#00e5ff"; // bright neon cyan
+      ctx.shadowColor = "#00e5ff";
+      ctx.shadowBlur = 12;
+
+      ctx.beginPath();
+      let sliceWidth = canvas.width / dataArray.length;
+      let x = 0;
+
+      for (let i = 0; i < dataArray.length; i++) {
+        let v = dataArray[i] / 128.0;
+        let y = v * canvas.height / 2;
+
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+        x += sliceWidth;
+      }
+
+      ctx.lineTo(canvas.width, canvas.height / 2);
+      ctx.stroke();
+    }
 
     // Start Recording
     recordBtn.addEventListener("click", async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          audio: {
-            sampleRate: 22050,
-            channelCount: 1,
-            echoCancellation: false,
-            noiseSuppression: false
-          }
-        });
-        
-        mediaRecorder = new MediaRecorder(stream, {
-          mimeType: 'audio/webm;codecs=opus'
-        });
-        
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // Setup AudioContext for waveform
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        source.connect(analyser);
+
+        drawWaveform();
+
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
         audioChunks = [];
 
         mediaRecorder.ondataavailable = event => {
-          if (event.data.size > 0) {
-            audioChunks.push(event.data);
-          }
+          if (event.data.size > 0) audioChunks.push(event.data);
         };
 
         mediaRecorder.onstop = async () => {
+          cancelAnimationFrame(animationId); // Stop waveform
+          ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+
           const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
           const formData = new FormData();
           formData.append("audio", audioBlob, "recording.webm");
 
           statusEl.textContent = "⏳ Sending audio for prediction...";
+          resultEl.textContent = "Processing...";
 
           try {
             const response = await fetch("http://127.0.0.1:5000/predict", {
@@ -80,20 +278,29 @@
             });
 
             const result = await response.json();
-            console.log("Server response:", result);
 
             if (result.error) {
               statusEl.textContent = "❌ Error: " + result.error;
               resultEl.textContent = "";
             } else {
               statusEl.textContent = "✅ Prediction complete!";
-              resultEl.textContent = 
+              resultEl.textContent =
                 "Predicted: " + result.predicted_class +
                 " (Confidence: " + (result.confidence * 100).toFixed(2) + "%)";
+
+              // Show popup
+              popup.textContent = "🎯 " + result.predicted_class +
+                " (" + (result.confidence * 100).toFixed(1) + "%)";
+              popup.classList.add("show");
+
+              // Hide popup after 3s
+              setTimeout(() => {
+                popup.classList.remove("show");
+              }, 3000);
             }
           } catch (err) {
-            console.error("Fetch error:", err);
             statusEl.textContent = "❌ Failed to send audio: " + err.message;
+            resultEl.textContent = "";
           }
         };
 
@@ -101,7 +308,7 @@
         recordBtn.disabled = true;
         stopBtn.disabled = false;
         statusEl.textContent = "🎙 Recording... (5 seconds recommended)";
-        
+
         // Auto-stop after 6 seconds
         setTimeout(() => {
           if (mediaRecorder.state === "recording") {
@@ -112,7 +319,6 @@
         }, 6000);
 
       } catch (err) {
-        console.error("Recording error:", err);
         statusEl.textContent = "❌ Microphone access denied: " + err.message;
       }
     });
